@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -12,9 +13,9 @@ cv::Mat loadImage(const std::string &imagePath) {
 }
 
 cv::Mat convertToGrayscale(const cv::Mat &image) {
-  cv::Mat gray_image;
-  cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
-  return gray_image;
+  cv::Mat grayImage;
+  cv::cvtColor(image, grayImage, cv::COLOR_BGR2GRAY);
+  return grayImage;
 }
 
 cv::Mat applyGaussianFilter(const cv::Mat &image, int kernelSize,
@@ -32,12 +33,22 @@ cv::Mat quantizeImage(const cv::Mat &image, int levels) {
   cv::Mat quantized_image = image.clone();
   double step = 256.0 / levels; // Step size for quantization
 
-  // Apply quantization
-  for (int i = 0; i < quantized_image.rows; i++) {
-    for (int j = 0; j < quantized_image.cols; j++) {
-      cv::Vec3b &pixel = quantized_image.at<cv::Vec3b>(i, j);
-      for (int c = 0; c < 3; c++) {
-        pixel[c] = static_cast<uchar>(std::round(pixel[c] / step) * step);
+  if (image.channels() == 1) {
+    // Handle grayscale quantization
+    for (int i = 0; i < quantized_image.rows; i++) {
+      for (int j = 0; j < quantized_image.cols; j++) {
+        uchar &pixel = quantized_image.at<uchar>(i, j);
+        pixel = static_cast<uchar>(std::round(pixel / step) * step);
+      }
+    }
+  } else {
+    // Handle color image quantization
+    for (int i = 0; i < quantized_image.rows; i++) {
+      for (int j = 0; j < quantized_image.cols; j++) {
+        cv::Vec3b &pixel = quantized_image.at<cv::Vec3b>(i, j);
+        for (int c = 0; c < 3; c++) {
+          pixel[c] = static_cast<uchar>(std::round(pixel[c] / step) * step);
+        }
       }
     }
   }
@@ -56,7 +67,15 @@ double calculateMSE(const cv::Mat &image1, const cv::Mat &image2) {
   diff.convertTo(diff, CV_32F);
   diff = diff.mul(diff); // Square the differences
 
-  return cv::sum(diff)[0] / (image1.rows * image1.cols);
+  double mse;
+  if (diff.channels() == 3) {
+    mse = (cv::sum(diff)[0] + cv::sum(diff)[1] + cv::sum(diff)[2]) /
+          (image1.rows * image1.cols * 3);
+  } else {
+    mse = cv::sum(diff)[0] / (image1.rows * image1.cols);
+  }
+
+  return mse;
 }
 
 double calculatePSNR(const cv::Mat &image1, const cv::Mat &image2) {
@@ -68,37 +87,13 @@ double calculatePSNR(const cv::Mat &image1, const cv::Mat &image2) {
   return 10 * log10((maxPixelValue * maxPixelValue) / mse);
 }
 
-std::vector<cv::Mat> splitChannels(const cv::Mat &image) {
-  std::vector<cv::Mat> channels(3);
-  cv::split(image, channels);
-  return channels;
-}
-
-cv::Mat createColorImage(const cv::Mat &channel, const std::string &color) {
-  cv::Mat colored_image;
-  cv::Mat blank_channel = cv::Mat::zeros(channel.size(), CV_8UC1);
-
-  if (color == "red") {
-    cv::merge(std::vector<cv::Mat>{blank_channel, blank_channel, channel},
-              colored_image);
-  } else if (color == "green") {
-    cv::merge(std::vector<cv::Mat>{blank_channel, channel, blank_channel},
-              colored_image);
-  } else if (color == "blue") {
-    cv::merge(std::vector<cv::Mat>{channel, blank_channel, blank_channel},
-              colored_image);
-  }
-
-  return colored_image;
-}
-
-cv::Mat calculateHistogram(const cv::Mat &gray_image) {
+cv::Mat calculateHistogram(const cv::Mat &grayImage) {
   int histSize = 256;       // Number of bins
   float range[] = {0, 256}; // Range of intensity values
   const float *histRange = {range};
 
   cv::Mat histogram;
-  cv::calcHist(&gray_image, 1, 0, cv::Mat(), histogram, 1, &histSize,
+  cv::calcHist(&grayImage, 1, 0, cv::Mat(), histogram, 1, &histSize,
                &histRange);
 
   // Normalize values to be in the range [0, 255]
@@ -121,46 +116,20 @@ void exportHistogramToCSV(const cv::Mat &histogram,
   file.close();
 }
 
-void displayImage(const cv::Mat &image, const std::string &windowName) {
-  cv::imshow(windowName, image);
-  cv::waitKey(0); // Wait for a key press before closing the window
-}
-
-void processImageOptions(const cv::Mat &image, bool showOriginal,
-                         bool showGrayscale, bool showRGB, bool showDiff,
-                         const cv::Mat &originalImage) {
-  if (showOriginal) {
-    displayImage(image, "Original Image");
-  }
-
-  if (showGrayscale) {
-    cv::Mat gray_image = convertToGrayscale(image);
-    displayImage(gray_image, "Grayscale Image");
-  }
-
-  if (showRGB) {
-    std::vector<cv::Mat> channels = splitChannels(image);
-    displayImage(createColorImage(channels[2], "red"), "Red Channel");
-    displayImage(createColorImage(channels[1], "green"), "Green Channel");
-    displayImage(createColorImage(channels[0], "blue"), "Blue Channel");
-  }
-
-  if (showDiff) {
-    if (!showOriginal) {
-      displayImage(originalImage, "Original Image");
-    }
-    displayImage(image, "Transformed Image");
-  }
+void displayImages(const cv::Mat &original, const cv::Mat &processed) {
+  cv::imshow("Original Image", original);
+  cv::imshow("Processed Image", processed);
+  cv::waitKey(0); // Wait for a key press to close the windows
 }
 
 int main(int argc, char **argv) {
   if (argc < 2) {
     std::cerr
-        << "Usage: ./image_processor <input_image_path>\n\t[--show_original] "
-           "\n\t[--show_grayscale] \n\t[--show_rgb] \n\t[--apply_gaussian "
+        << "Usage: ./image_processor <input_image_path>\n\t[--set_image "
+           "<grayscale|red|green|blue|original>] \n\t[--apply_gaussian "
            "<kernel_size>] "
            "\n\t[--quantize <levels>] \n\t[--export_histogram <output_file>] "
-           "\n\t[--print_metrics] \n\t[--show_diff]"
+           "\n\t[--print_metrics] \n\t[--show]"
         << std::endl;
     return 1;
   }
@@ -168,28 +137,19 @@ int main(int argc, char **argv) {
   try {
     std::string imagePath = argv[1];
     std::string outputFileName;
-    std::string metricsFileName;
-
-    // Default options
-    bool showOriginal = false;
-    bool showGrayscale = false;
-    bool showRGB = false;
+    std::string imageMode = "original"; // Default mode
     bool applyGaussian = false;
     bool exportHistogram = false;
     bool printMetrics = false;
-    bool showDiff = false;
+    bool showImages = false;
     int gaussianKernelSize = 5;
     int quantizationLevels = 0;
 
     for (int i = 2; i < argc; i++) {
       std::string arg = argv[i];
 
-      if (arg == "--show_original") {
-        showOriginal = true;
-      } else if (arg == "--show_grayscale") {
-        showGrayscale = true;
-      } else if (arg == "--show_rgb") {
-        showRGB = true;
+      if (arg == "--set_image" && i + 1 < argc) {
+        imageMode = argv[++i];
       } else if (arg == "--apply_gaussian" && i + 1 < argc) {
         applyGaussian = true;
         gaussianKernelSize = std::stoi(argv[++i]);
@@ -200,36 +160,62 @@ int main(int argc, char **argv) {
         outputFileName = argv[++i];
       } else if (arg == "--print_metrics") {
         printMetrics = true;
-      } else if (arg == "--show_diff") {
-        showDiff = true;
+      } else if (arg == "--show") {
+        showImages = true;
       }
     }
 
-    cv::Mat image = loadImage(imagePath);
-    cv::Mat originalImage = image.clone();
+    cv::Mat originalImage = loadImage(imagePath);
+
+    if (imageMode == "grayscale") {
+      originalImage = convertToGrayscale(originalImage);
+    } else if (imageMode == "red" || imageMode == "green" ||
+               imageMode == "blue") {
+      std::vector<cv::Mat> channels;
+      cv::split(originalImage, channels);
+      if (imageMode == "red") {
+        channels[0] = cv::Mat::zeros(channels[0].size(), CV_8UC1);
+        channels[1] = cv::Mat::zeros(channels[1].size(), CV_8UC1);
+      } else if (imageMode == "green") {
+        channels[0] = cv::Mat::zeros(channels[0].size(), CV_8UC1);
+        channels[2] = cv::Mat::zeros(channels[2].size(), CV_8UC1);
+      } else if (imageMode == "blue") {
+        channels[1] = cv::Mat::zeros(channels[1].size(), CV_8UC1);
+        channels[2] = cv::Mat::zeros(channels[2].size(), CV_8UC1);
+      }
+      cv::merge(channels, originalImage);
+    }
+    cv::Mat processedImage = originalImage.clone();
 
     if (applyGaussian) {
-      image = applyGaussianFilter(image, gaussianKernelSize, 0);
+      processedImage =
+          applyGaussianFilter(processedImage, gaussianKernelSize, 0);
     }
 
     if (quantizationLevels > 0) {
-      image = quantizeImage(image, quantizationLevels);
+      processedImage = quantizeImage(processedImage, quantizationLevels);
     }
 
-    processImageOptions(image, showOriginal, showGrayscale, showRGB, showDiff,
-                        originalImage);
-
     if (printMetrics) {
-      double mse = calculateMSE(originalImage, image);
-      double psnr = calculatePSNR(originalImage, image);
-      std::cout << mse << "," << psnr << "\n";
+      double mse = calculateMSE(originalImage, processedImage);
+      double psnr = calculatePSNR(originalImage, processedImage);
+      std::cout << mse << ", " << psnr << "\n";
     }
 
     if (exportHistogram) {
-      cv::Mat gray_image = convertToGrayscale(originalImage);
-      cv::Mat histogram = calculateHistogram(gray_image);
+      cv::Mat grayImage;
+      if (processedImage.channels() == 3) {
+        grayImage = convertToGrayscale(processedImage);
+      } else {
+        grayImage = processedImage.clone();
+      }
+      cv::Mat histogram = calculateHistogram(grayImage);
       exportHistogramToCSV(histogram, outputFileName);
       std::cout << "Histogram exported to: " << outputFileName << std::endl;
+    }
+
+    if (showImages) {
+      displayImages(originalImage, processedImage);
     }
 
   } catch (const std::exception &e) {
