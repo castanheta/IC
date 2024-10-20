@@ -11,11 +11,15 @@ void countCharFrequencies(const std::string& input, std::map<char, int>& freqMap
     }
 }
 
-int main() {
-    std::ifstream file("sample1.txt");
-    if (!file) {
-        std::cerr << "Error: Unable to open file!" << std::endl;
+int main(int argc, char **argv) {
+    std::ifstream file(argv[1]); // Open the file
+    if (argc != 2) {
+        std::cerr << "Usage: ./text_processor <input_text_path>" << std::endl;
         return 1;
+    }
+    else if (!file) {
+        std::cerr << "Error: Unable to open file!" << std::endl;
+    return 1;
     }
 
     std::map<char, int> freqMap;
