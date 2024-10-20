@@ -25,20 +25,36 @@ QUANTIZATION_STEP=2
 GAUSSIAN_OUTPUT_FILE="$RESULTS_DIR/${IMG_NAME}_gaussian.csv"
 QUANTIZATION_OUTPUT_FILE="$RESULTS_DIR/${IMG_NAME}_quantization.csv"
 
-echo "Value,MSE,PSNR" > "$GAUSSIAN_OUTPUT_FILE"
+echo "Value,MSE,PSNR,Time(ms)" > "$GAUSSIAN_OUTPUT_FILE"
 echo "Processing Gaussian filter values..."
 for (( k=GAUSSIAN_BEGIN; k<=GAUSSIAN_END; k+=GAUSSIAN_STEP )); do
   echo "Gaussian Kernel Size: $k"
+
+  # Measure time
+  start_time=$(date +%s%N) # nanoseconds
   metrics=$(./image_processor "$INPUT_IMAGE" --apply_gaussian "$k" --set_image grayscale --print_metrics 2>/dev/null)
-  echo "$k,$metrics" >> "$GAUSSIAN_OUTPUT_FILE"
+  end_time=$(date +%s%N)
+
+  # Calculate elapsed time in milliseconds
+  elapsed_time=$(echo "scale=3; ($end_time - $start_time) / 1000000" | bc)
+
+  echo "$k,$metrics,$elapsed_time" >> "$GAUSSIAN_OUTPUT_FILE"
 done
 
-echo "Value,MSE,PSNR" > "$QUANTIZATION_OUTPUT_FILE"
+echo "Value,MSE,PSNR,Time(ms)" > "$QUANTIZATION_OUTPUT_FILE"
 echo "Processing Quantization levels..."
 for (( q=QUANTIZATION_BEGIN; q<=QUANTIZATION_END; q+=QUANTIZATION_STEP )); do
   echo "Quantization Levels: $q"
+
+  # Measure time
+  start_time=$(date +%s%N) # nanoseconds
   metrics=$(./image_processor "$INPUT_IMAGE" --quantize "$q" --set_image grayscale --print_metrics 2>/dev/null)
-  echo "$q,$metrics" >> "$QUANTIZATION_OUTPUT_FILE"
+  end_time=$(date +%s%N)
+
+  # Calculate elapsed time in milliseconds
+  elapsed_time=$(echo "scale=3; ($end_time - $start_time) / 1000000" | bc)
+
+  echo "$q,$metrics,$elapsed_time" >> "$QUANTIZATION_OUTPUT_FILE"
 done
 
 echo "Processing completed. Results saved in $RESULTS_DIR."
