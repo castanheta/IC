@@ -4,7 +4,7 @@
 output_file="execution_time.txt"
 
 # Path to the input file (adjust as necessary)
-input_file="../../assets/Sample1.txt"
+input_file="../../assets/Sample.txt"
 
 # Step 1: Build the project
 mkdir -p build
@@ -18,9 +18,18 @@ if [[ ! -f "$input_file" ]]; then
     exit 1
 fi
 
-# Step 3: Run the executable and measure execution time
+# Step 3: Run the executable and measure execution time in milliseconds
 echo "Running the program and measuring time..."
-/usr/bin/time -o "../$output_file" -f "Elapsed Time: %E" ./text_processor "$input_file"
+start_time=$(date +%s%3N)  # Capture start time in milliseconds
+./text_processor "$input_file"  # Run the executable
+end_time=$(date +%s%3N)  # Capture end time in milliseconds
+
+# Calculate elapsed time in milliseconds
+elapsed_time=$((end_time - start_time))
+
+# Save the result to the output file
+echo "Elapsed Time (ms): $elapsed_time" > "../$output_file"
 
 # Step 4: Notify user of completion
 echo "Execution time has been saved to $output_file"
+
