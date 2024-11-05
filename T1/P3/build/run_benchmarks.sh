@@ -32,7 +32,7 @@ for (( k=GAUSSIAN_BEGIN; k<=GAUSSIAN_END; k+=GAUSSIAN_STEP )); do
 
   # Measure time
   start_time=$(date +%s%N) # nanoseconds
-  metrics=$(./image_processor "$INPUT_IMAGE" --apply_gaussian "$k" --set_image grayscale --print_metrics 2>/dev/null)
+  metrics=$(./image_processor "$INPUT_IMAGE" --apply_gaussian "$k" --print_metrics 2>/dev/null)
   end_time=$(date +%s%N)
 
   # Calculate elapsed time in milliseconds
@@ -48,7 +48,7 @@ for (( q=QUANTIZATION_BEGIN; q<=QUANTIZATION_END; q+=QUANTIZATION_STEP )); do
 
   # Measure time
   start_time=$(date +%s%N) # nanoseconds
-  metrics=$(./image_processor "$INPUT_IMAGE" --quantize "$q" --set_image grayscale --print_metrics 2>/dev/null)
+  metrics=$(./image_processor "$INPUT_IMAGE" --quantize "$q" --print_metrics 2>/dev/null)
   end_time=$(date +%s%N)
 
   # Calculate elapsed time in milliseconds
