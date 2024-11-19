@@ -8,17 +8,19 @@ void encode(const string &inputFile, const string &outputFile) {
   BitStream inputBitStream(inputFile, false);
   BitStream outputBitStream(outputFile, true);
 
-  int bitCount = 0;
-
+  // Write the bit count as a header (32 bits)
+  uint64_t totalBits = 0;
   while (inputBitStream.hasNext()) {
-    bool bit = inputBitStream.readBit();
-    outputBitStream.writeBit(bit);
-    bitCount++;
+    inputBitStream.readString(1);
+    totalBits++;
   }
+  outputBitStream.writeBits(totalBits, 32);
 
-  while (bitCount % 8 != 0) {
-    outputBitStream.writeBit(0);
-    bitCount++;
+  inputBitStream.reset();
+  while (inputBitStream.hasNext()) {
+    string bitString = inputBitStream.readString(1);
+    bool bit = (bitString == "1");
+    outputBitStream.writeBit(bit);
   }
 }
 

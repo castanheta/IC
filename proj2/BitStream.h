@@ -13,23 +13,27 @@ private:
   ofstream outFile;
   ifstream inFile;
   uint8_t buffer = 0;
-  uint8_t bitPos = 0;
+  uint8_t bitCount = 0;
   bool writingMode = false;
   bool eofReached = false;
 
   void flushBuffer();
 
 public:
-  BitStream(const std::string &filename, bool writeMode);
+  BitStream(const string &filename, bool writeMode);
   ~BitStream();
 
   void writeBit(bool bit);
   bool readBit();
-  void writeBits(std::uint64_t value, std::uint8_t numBits);
-  uint64_t readBits(std::uint8_t numBits);
-  void writeString(const std::string &str);
-  string readString(std::size_t length);
+
+  void writeBits(uint64_t value, uint8_t numBits);
+  uint64_t readBits(uint8_t numBits);
+
+  void writeString(const string &str);
+  string readString(uint8_t numChars);
+
   bool hasNext();
+  void reset();
 };
 
 #endif // BITSTREAM_H

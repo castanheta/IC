@@ -7,8 +7,11 @@ void decode(const string &inputFile, const string &outputFile) {
   BitStream inputBitStream(inputFile, false);
   BitStream outputBitStream(outputFile, true);
 
-  while (inputBitStream.hasNext()) {
-    string bitString = inputBitStream.readString(8);
+  // Read the bit count in header (32 bits)
+  uint64_t totalBits = inputBitStream.readBits(32);
+  for (uint64_t i = 0; i < totalBits; i++) {
+    bool bit = inputBitStream.readBit();
+    string bitString = bit ? "1" : "0";
     outputBitStream.writeString(bitString);
   }
 }

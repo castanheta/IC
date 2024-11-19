@@ -1,4 +1,5 @@
 #include "BitStream.h"
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -6,7 +7,7 @@
 using namespace std;
 
 BitStream::BitStream(const string &filename, bool writeMode)
-    : bitPos(0), buffer(0), eofReached(false) {
+    : bitCount(0), buffer(0), eofReached(false) {
   writingMode = writeMode;
   if (writeMode) {
     outFile.open(filename, ios::binary);
@@ -21,7 +22,6 @@ BitStream::BitStream(const string &filename, bool writeMode)
 
 BitStream::~BitStream() {
   if (writingMode) {
-    // Ensure any remaining bits are written
     flushBuffer();
     outFile.close();
   } else {
@@ -30,47 +30,33 @@ BitStream::~BitStream() {
 }
 
 void BitStream::flushBuffer() {
-  if (bitPos > 0) {
+  if (bitCount > 0) {
+    buffer <<= (8 - bitCount); // Pad remaining bits with zeros
     outFile.put(buffer);
     buffer = 0;
-    bitPos = 0;
+    bitCount = 0;
   }
 }
 
 void BitStream::writeBit(bool bit) {
   buffer = (buffer << 1) | (bit ? 1 : 0);
-  bitPos++;
-  if (bitPos == 8)
+  bitCount++;
+  if (bitCount == 8)
     flushBuffer();
 }
 
 bool BitStream::readBit() {
-  if (bitPos == 0) {
+  if (bitCount == 0) {
     buffer = inFile.get();
     if (inFile.eof()) {
       eofReached = true;
       throw runtime_error("End of file reached.");
     }
-    bitPos = 8;
+    bitCount = 8;
   }
-  bool bit = (buffer >> (bitPos - 1)) & 1;
-  bitPos--;
+  bool bit = (buffer >> (bitCount - 1)) & 1;
+  bitCount--;
   return bit;
-}
-
-bool BitStream::hasNext() {
-  if (bitPos > 0) {
-    return true; // There are still bits left in the buffer
-  }
-
-  // Peek the next byte to check for EOF without consuming it
-  if (!eofReached) {
-    char nextChar = inFile.peek();
-    if (inFile.eof()) {
-      eofReached = true;
-    }
-  }
-  return !eofReached;
 }
 
 void BitStream::writeBits(uint64_t value, uint8_t numBits) {
@@ -89,15 +75,45 @@ uint64_t BitStream::readBits(uint8_t numBits) {
 
 void BitStream::writeString(const string &str) {
   for (char c : str) {
-    writeBit(c == '1');
+    writeBits(c, 8);
   }
 }
 
-string BitStream::readString(size_t length) {
+string BitStream::readString(uint8_t numChars) {
   string result;
-  result.reserve(length);
-  for (size_t i = 0; i < length; ++i) {
-    result.push_back(readBit() ? '1' : '0');
+  result.reserve(numChars * 8);
+  for (size_t i = 0; i < numChars; ++i) {
+    char c = readBits(8);
+    result.push_back(c);
   }
   return result;
+}
+
+bool BitStream::hasNext() {
+  if (bitCount > 0) {
+    return true;
+  }
+
+  if (!eofReached) {
+    char nextChar = inFile.peek();
+    // if (nextChar == '\n') {
+    //   inFile.get();  // Consume the newline
+    //   return hasNext();  // Recursively call hasNext to check the next character
+    // }
+    if (inFile.eof()) {
+      eofReached = true;
+    }
+  }
+  return !eofReached;
+}
+
+void BitStream::reset() {
+  if (writingMode) {
+    throw runtime_error("Cannot reset a BitStream in write mode.");
+  }
+  inFile.clear();  // Clear EOF and other state flags
+  inFile.seekg(0); // Seek to the beginning of the file
+  bitCount = 0;    // Reset the bit buffer state
+  buffer = 0;
+  eofReached = false; // Reset EOF tracking
 }
