@@ -13,8 +13,8 @@ public:
   int decodeInteger(BitStream &bitStream) const;
 
 private:
-  uint32_t m;                    // Golomb parameter
-  NegativeEncoding negativeMode; // Negative number encoding mode
+  uint32_t m;
+  NegativeEncoding negativeMode;
 
   uint32_t mapToNonNegative(int value) const;
   int mapToSigned(uint32_t value) const;

@@ -20,12 +20,10 @@ void readIntegersFromFile(const string &filename, vector<int> &integers) {
   inputFile.close();
 }
 
-// Writes integers to a binary file using Golomb encoding
 void writeIntegersToBinary(const vector<int> &integers, const string &filename,
                            GolombCoding &golomb) {
   BitStream bitStream(filename, true);
 
-  // Write the number of integers as the header (32 bits)
   bitStream.writeBits(integers.size(), 32);
 
   for (int value : integers) {
@@ -33,22 +31,18 @@ void writeIntegersToBinary(const vector<int> &integers, const string &filename,
   }
 }
 
-// Reads integers from a binary file using Golomb decoding
 void readIntegersFromBinary(const string &filename,
                             vector<int> &decodedIntegers,
                             GolombCoding &golomb) {
   BitStream bitStream(filename, false);
 
-  // Read the number of integers from the header (32 bits)
   uint32_t count = bitStream.readBits(32);
 
-  // Decode exactly `count` integers
   for (uint32_t i = 0; i < count; ++i) {
     decodedIntegers.push_back(golomb.decodeInteger(bitStream));
   }
 }
 
-// Verifies that the original and decoded integers match
 void verifyResults(const vector<int> &original, const vector<int> &decoded) {
   if (original.size() != decoded.size()) {
     cout << "Mismatch in size between original and decoded data.\n";
@@ -71,6 +65,18 @@ void verifyResults(const vector<int> &original, const vector<int> &decoded) {
   }
 }
 
+void writeIntegersToFile(const string &filename, const vector<int> &integers) {
+  ofstream outputFile(filename);
+  if (!outputFile.is_open()) {
+    throw runtime_error("Failed to open output file.");
+  }
+
+  for (int value : integers) {
+    outputFile << value << endl;
+  }
+  outputFile.close();
+}
+
 int main(int argc, char *argv[]) {
   if (argc != 5) {
     cerr << "Usage: " << argv[0]
@@ -84,21 +90,18 @@ int main(int argc, char *argv[]) {
   uint32_t m = stoi(argv[4]);
 
   try {
-    // Configure Golomb coding with the ZIGZAG mapping
     GolombCoding golomb(m, GolombCoding::ZIGZAG);
 
-    // Read integers from the input text file
     vector<int> originalIntegers;
     readIntegersFromFile(inputFile, originalIntegers);
 
-    // Encode and write integers to the binary file
     writeIntegersToBinary(originalIntegers, encodedFile, golomb);
 
-    // Decode integers from the binary file
     vector<int> decodedIntegers;
     readIntegersFromBinary(encodedFile, decodedIntegers, golomb);
 
-    // Verify that the original and decoded integers match
+    writeIntegersToFile(decodedFile, decodedIntegers);
+
     verifyResults(originalIntegers, decodedIntegers);
   } catch (const exception &e) {
     cerr << "Error: " << e.what() << endl;

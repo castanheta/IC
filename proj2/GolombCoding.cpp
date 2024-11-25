@@ -56,23 +56,23 @@ void GolombCoding::encodeInteger(int value, BitStream &bitStream) const {
 
 int GolombCoding::decodeInteger(BitStream &bitStream) const {
   uint32_t q = 0;
-  while (bitStream.readBit()) {
-    ++q;
+  while (bitStream.hasNext() && bitStream.readBit()) {
+      ++q;
   }
 
   uint32_t b = static_cast<uint32_t>(ceil(log2(m)));
   uint32_t threshold = (1U << b) - m;
 
-  uint32_t r;
+  uint32_t r = 0;
   if (bitStream.hasNext()) {
     r = bitStream.readBits(b - 1);
     if (r >= threshold && bitStream.hasNext()) {
-      uint32_t extraBit = bitStream.readBit();
-      r = (r << 1) | extraBit;
+        uint32_t extraBit = bitStream.readBit();
+        r = (r << 1) | extraBit;
+        r -= threshold;
     }
   } else {
-    throw runtime_error(
-        "Unexpected end of stream while decoding remainder.");
+    throw runtime_error("Unexpected end of stream while decoding remainder.");
   }
 
   uint32_t mappedValue = q * m + r;
