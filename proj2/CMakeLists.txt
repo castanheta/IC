@@ -11,18 +11,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(SOURCE_FILES
     BitStream.cpp
     GolombCoding.cpp
+    ImageCodec.cpp
 )
 
-# Include directories
-# If you have headers in a separate include/ directory:
-# target_include_directories(encoder PRIVATE include)
-# target_include_directories(decoder PRIVATE include)
-# target_include_directories(golombTest PRIVATE include)
+# Find OpenCV
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Add executables
 add_executable(encoder encoder.cpp ${SOURCE_FILES})
 add_executable(decoder decoder.cpp ${SOURCE_FILES})
 add_executable(golombTest GolombTest.cpp ${SOURCE_FILES})
+add_executable(imageTest ImageCodecTest.cpp ${SOURCE_FILES})
+
+# Link OpenCV libraries
+target_link_libraries(encoder ${OpenCV_LIBS})
+target_link_libraries(decoder ${OpenCV_LIBS})
+target_link_libraries(golombTest ${OpenCV_LIBS})
+target_link_libraries(imageTest ${OpenCV_LIBS})
 
 # Apply compiler options globally
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
