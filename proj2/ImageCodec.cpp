@@ -1,17 +1,23 @@
 #include "ImageCodec.h"
 #include "BitStream.h"
-#include "GolombCoding.h"
-#include <opencv2/opencv.hpp>
 #include <stdexcept>
 
 ImageCodec::ImageCodec(uint32_t m) : golomb(m, GolombCoding::ZIGZAG) {}
 
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
+  BitStream bitStream(outputFile, true);
+  encode(image, bitStream);
+}
+
+cv::Mat ImageCodec::decode(const std::string &inputFile) {
+  BitStream bitStream(inputFile, false);
+  return decode(bitStream);
+}
+
+void ImageCodec::encode(const cv::Mat &image, BitStream &bitStream) {
   if (image.empty()) {
     throw std::runtime_error("Input image is empty.");
   }
-
-  BitStream bitStream(outputFile, true);
 
   // Write image dimensions
   bitStream.writeBits(image.rows, 32);
@@ -28,9 +34,7 @@ void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
   }
 }
 
-cv::Mat ImageCodec::decode(const std::string &inputFile) {
-  BitStream bitStream(inputFile, false);
-
+cv::Mat ImageCodec::decode(BitStream &bitStream) {
   // Read image dimensions
   int rows = bitStream.readBits(32);
   int cols = bitStream.readBits(32);

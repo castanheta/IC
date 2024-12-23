@@ -8,14 +8,18 @@
 
 class ImageCodec {
 public:
-  ImageCodec(uint32_t golombM);
+  explicit ImageCodec(uint32_t m);
+
+  // Encode and decode from a file
   void encode(const cv::Mat &image, const std::string &outputFile);
   cv::Mat decode(const std::string &inputFile);
 
+  // New: Encode and decode directly using BitStream
+  void encode(const cv::Mat &image, BitStream &bitStream);
+  cv::Mat decode(BitStream &bitStream);
+
 private:
-  uint32_t golombM;
   GolombCoding golomb;
-  int predict(const cv::Mat &image, int row, int col, int channel) const;
 };
 
 #endif // IMAGE_CODEC_H
