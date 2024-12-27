@@ -2,56 +2,75 @@
 #include "BitStream.h"
 #include <stdexcept>
 
-VideoCodecIntra::VideoCodecIntra(uint32_t defaultM)
-    : defaultM(defaultM), imageCodec(defaultM) {}
+VideoCodecIntra::VideoCodecIntra(uint32_t m)
+    : golomb(m, GolombCoding::ZIGZAG) {}
 
 void VideoCodecIntra::encode(const std::vector<cv::Mat> &frames,
-                             const std::string &outputFile, uint32_t m) {
+                             const std::string &outputFile, uint32_t golombM) {
   if (frames.empty()) {
     throw std::runtime_error("No frames to encode.");
   }
 
   BitStream bitStream(outputFile, true);
 
-  // Write number of frames, frame dimensions, and Golomb parameter
-  bitStream.writeBits(frames.size(), 32);
-  bitStream.writeBits(frames[0].rows, 32);
-  bitStream.writeBits(frames[0].cols, 32);
-  bitStream.writeBits(m, 32);
+  // Write Golomb parameter
+  bitStream.writeBits(golombM, 32);
 
-  // Calculate optimal m dynamically for each frame
+  // Write video dimensions and number of frames
+  int width = frames[0].cols;
+  int height = frames[0].rows;
+  int numFrames = static_cast<int>(frames.size());
+
+  bitStream.writeBits(width, 32);
+  bitStream.writeBits(height, 32);
+  bitStream.writeBits(numFrames, 32);
+
+  // Encode each frame
   for (const auto &frame : frames) {
-    if (frame.empty()) {
-      throw std::runtime_error("One of the frames is empty.");
+    if (frame.cols != width || frame.rows != height ||
+        frame.type() != CV_8UC3) {
+      throw std::runtime_error(
+          "All frames must have the same dimensions and type.");
     }
-    uint32_t dynamicM = calculateOptimalM(frame);
-    ImageCodec customImageCodec(dynamicM);
-    customImageCodec.encode(frame, bitStream);
-  }
-}
 
-uint32_t VideoCodecIntra::calculateOptimalM(const cv::Mat &frame) {
-  cv::Scalar mean, stddev;
-  cv::meanStdDev(frame, mean, stddev);
-  double variance = stddev[0]; // Use the first channel for calculation.
-  return static_cast<uint32_t>(std::max(1.0, sqrt(variance)));
+    for (int row = 0; row < frame.rows; ++row) {
+      for (int col = 0; col < frame.cols; ++col) {
+        cv::Vec3b pixel = frame.at<cv::Vec3b>(row, col);
+        for (int channel = 0; channel < 3; ++channel) {
+          golomb.encodeInteger(pixel[channel], bitStream);
+        }
+      }
+    }
+  }
 }
 
 std::vector<cv::Mat> VideoCodecIntra::decode(const std::string &inputFile) {
   BitStream bitStream(inputFile, false);
 
-  // Read number of frames, frame dimensions, and Golomb parameter
-  uint32_t numFrames = bitStream.readBits(32);
-  int rows = bitStream.readBits(32);
-  int cols = bitStream.readBits(32);
-  uint32_t m = bitStream.readBits(32);
+  // Read Golomb parameter
+  uint32_t golombM = bitStream.readBits(32);
+  GolombCoding golombDecoder(golombM, GolombCoding::ZIGZAG);
 
-  ImageCodec customImageCodec(m);
+  // Read video dimensions and number of frames
+  int width = bitStream.readBits(32);
+  int height = bitStream.readBits(32);
+  int numFrames = bitStream.readBits(32);
+
   std::vector<cv::Mat> frames;
-  for (uint32_t i = 0; i < numFrames; ++i) {
-    cv::Mat frame = customImageCodec.decode(bitStream);
-    if (frame.rows != rows || frame.cols != cols) {
-      throw std::runtime_error("Frame dimensions mismatch during decoding.");
+  frames.reserve(numFrames);
+
+  // Decode each frame
+  for (int i = 0; i < numFrames; ++i) {
+    cv::Mat frame(height, width, CV_8UC3);
+    for (int row = 0; row < height; ++row) {
+      for (int col = 0; col < width; ++col) {
+        cv::Vec3b pixel;
+        for (int channel = 0; channel < 3; ++channel) {
+          pixel[channel] =
+              static_cast<uchar>(golombDecoder.decodeInteger(bitStream));
+        }
+        frame.at<cv::Vec3b>(row, col) = pixel;
+      }
     }
     frames.push_back(frame);
   }

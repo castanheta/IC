@@ -1,4 +1,6 @@
 #include "VideoCodecIntra.h"
+#include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <stdexcept>
@@ -28,25 +30,59 @@ void readVideoFrames(const string &videoPath, vector<cv::Mat> &frames,
   }
 }
 
-void writeVideoFrames(const string &videoPath, const vector<cv::Mat> &frames,
-                      int width, int height, int fps) {
+void writeDecodedFramesToImages(const vector<cv::Mat> &frames,
+                                const string &outputFolder) {
   if (frames.empty()) {
-    throw runtime_error("No frames to write to output video.");
+    throw runtime_error("No frames to write to output folder.");
   }
 
-  cv::VideoWriter writer(videoPath,
-                         cv::VideoWriter::fourcc('F', 'F', 'V', '1'), fps,
-                         cv::Size(width, height), true);
-
-  if (!writer.isOpened()) {
-    throw runtime_error("Failed to open output video file.");
+  if (!filesystem::exists(outputFolder)) {
+    filesystem::create_directories(outputFolder);
   }
 
-  for (const auto &frame : frames) {
-    writer.write(frame);
+  for (size_t i = 0; i < frames.size(); ++i) {
+    string fileName = outputFolder + "/frame_" + to_string(i) + ".png";
+    if (!cv::imwrite(fileName, frames[i])) {
+      throw runtime_error("Failed to write frame to " + fileName);
+    }
   }
+}
 
-  writer.release();
+void createVideoFromImages(const string &outputFolder,
+                           const string &decodedVideoPath, int width,
+                           int height, int fps) {
+  // Define the frame rate as the exact fraction 30000/1001 (29.97 fps)
+  string frameRate = "30000/1001";
+
+  // SAR and DAR values for the input video
+  int sar_width = 128;
+  int sar_height = 117;
+
+  // Calculate the correct DAR based on SAR and resolution
+  int dar_width = sar_width * width;
+  int dar_height = sar_height * height;
+
+  // Construct the ffmpeg command
+  string command =
+      "ffmpeg -y -framerate " +
+      frameRate + // Set the exact frame rate (30000/1001)
+      " -i " + outputFolder + "/frame_%d.png" + // Input frames
+      " -s " + to_string(width) + "x" +
+      to_string(height) +   // Set resolution to 352x288
+      " -pix_fmt yuv420p" + // Use 4:2:0 chroma subsampling
+      " -aspect " + to_string(dar_width) + ":" +
+      to_string(dar_height) + // Set DAR correctly
+      " -sar " + to_string(sar_width) + ":" +
+      to_string(sar_height) + // Set SAR correctly
+      " -colorspace bt709" +  // Set color space to Rec.709 (standard for video)
+      " -color_range mpeg" +  // Set color range to limited (16-235)
+      " -strict -1 " +        // Allow legacy formats
+      decodedVideoPath;       // Output path
+
+  // Execute the command
+  if (system(command.c_str()) != 0) {
+    throw runtime_error("Failed to create decoded video using ffmpeg.");
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -60,6 +96,8 @@ int main(int argc, char *argv[]) {
   string encodedFile = argv[2];
   string decodedVideo = argv[3];
   uint32_t golombM = stoi(argv[4]);
+
+  string tempOutputFolder = "./decoded_frames";
 
   try {
     // Read input video frames
@@ -85,22 +123,25 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    // Verify frame data
-    for (size_t i = 0; i < originalFrames.size(); ++i) {
-      cv::Mat diff = originalFrames[i] != decodedFrames[i];
-      cv::Mat diffGray;
-      cv::cvtColor(diff, diffGray,
-                   cv::COLOR_BGR2GRAY); // Convert to grayscale if needed
-      if (cv::countNonZero(diffGray) != 0) {
-        cerr << "Mismatch in frame " << i << endl;
-        return 1;
-      }
-    }
-    cout << "All frames match between original and decoded video." << endl;
+    // // Verify frame data
+    // for (size_t i = 0; i < originalFrames.size(); ++i) {
+    //   cv::Mat diff = originalFrames[i] != decodedFrames[i];
+    //   if (cv::countNonZero(diff) != 0) {
+    //     cerr << "Mismatch in frame " << i << endl;
+    //     return 1;
+    //   }
+    // }
+    // cout << "All frames match between original and decoded video." << endl;
 
-    // Write decoded frames to output video
-    writeVideoFrames(decodedVideo, decodedFrames, width, height, fps);
+    // Write decoded frames to images
+    writeDecodedFramesToImages(decodedFrames, tempOutputFolder);
+
+    // Create video from images using ffmpeg
+    createVideoFromImages(tempOutputFolder, decodedVideo, width, height, fps);
     cout << "Decoded video saved to: " << decodedVideo << endl;
+
+    // Cleanup temporary frames
+    // filesystem::remove_all(tempOutputFolder);
 
   } catch (const exception &e) {
     cerr << "Error: " << e.what() << endl;

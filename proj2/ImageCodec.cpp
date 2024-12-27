@@ -5,19 +5,10 @@
 ImageCodec::ImageCodec(uint32_t m) : golomb(m, GolombCoding::ZIGZAG) {}
 
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
-  BitStream bitStream(outputFile, true);
-  encode(image, bitStream);
-}
-
-cv::Mat ImageCodec::decode(const std::string &inputFile) {
-  BitStream bitStream(inputFile, false);
-  return decode(bitStream);
-}
-
-void ImageCodec::encode(const cv::Mat &image, BitStream &bitStream) {
   if (image.empty()) {
     throw std::runtime_error("Input image is empty.");
   }
+  BitStream bitStream(outputFile, true);
 
   // Write image dimensions
   bitStream.writeBits(image.rows, 32);
@@ -28,13 +19,15 @@ void ImageCodec::encode(const cv::Mat &image, BitStream &bitStream) {
     for (int col = 0; col < image.cols; ++col) {
       cv::Vec3b pixel = image.at<cv::Vec3b>(row, col);
       for (int channel = 0; channel < 3; ++channel) {
+        std::cout << "Encoding pixel: " << pixel << std::endl;
         golomb.encodeInteger(pixel[channel], bitStream);
       }
     }
   }
 }
 
-cv::Mat ImageCodec::decode(BitStream &bitStream) {
+cv::Mat ImageCodec::decode(const std::string &inputFile) {
+  BitStream bitStream(inputFile, false);
   // Read image dimensions
   int rows = bitStream.readBits(32);
   int cols = bitStream.readBits(32);
