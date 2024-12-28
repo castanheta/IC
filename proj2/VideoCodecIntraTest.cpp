@@ -4,7 +4,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <stdexcept>
-#include <vector>
 
 using namespace std;
 
@@ -75,7 +74,7 @@ void createVideoFromImages(const string &outputFolder,
       " -sar " + to_string(sar_width) + ":" +
       to_string(sar_height) + // Set SAR correctly
       " -colorspace bt709" +  // Set color space to Rec.709 (standard for video)
-      " -color_range mpeg" +  // Set color range to limited (16-235)
+      " -color_range tv" +    // Set color range to limited (16-235)
       " -strict -1 " +        // Allow legacy formats
       decodedVideoPath;       // Output path
 
@@ -123,15 +122,17 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    // // Verify frame data
-    // for (size_t i = 0; i < originalFrames.size(); ++i) {
-    //   cv::Mat diff = originalFrames[i] != decodedFrames[i];
-    //   if (cv::countNonZero(diff) != 0) {
-    //     cerr << "Mismatch in frame " << i << endl;
-    //     return 1;
-    //   }
-    // }
-    // cout << "All frames match between original and decoded video." << endl;
+    // Verify frame data
+    for (size_t i = 0; i < originalFrames.size(); ++i) {
+      cv::Mat diff;
+      cv::absdiff(originalFrames[i], decodedFrames[i], diff);
+      cv::Scalar avgDiff = cv::mean(diff);
+      if (cv::countNonZero(avgDiff) != 0) {
+        cerr << "Mismatch in frame " << i << endl;
+        return 1;
+      }
+    }
+    cout << "All frames match between original and decoded video." << endl;
 
     // Write decoded frames to images
     writeDecodedFramesToImages(decodedFrames, tempOutputFolder);
@@ -141,7 +142,7 @@ int main(int argc, char *argv[]) {
     cout << "Decoded video saved to: " << decodedVideo << endl;
 
     // Cleanup temporary frames
-    // filesystem::remove_all(tempOutputFolder);
+    filesystem::remove_all(tempOutputFolder);
 
   } catch (const exception &e) {
     cerr << "Error: " << e.what() << endl;
