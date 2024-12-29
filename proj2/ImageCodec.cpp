@@ -1,25 +1,39 @@
 #include "ImageCodec.h"
-#include "BitStream.h"
-#include <stdexcept>
+#include <cmath>
 
-ImageCodec::ImageCodec(uint32_t m) : golomb(m, GolombCoding::ZIGZAG) {}
+ImageCodec::ImageCodec(uint32_t m) : golomb(m) {}
+
+// Helper function for spatial prediction
+static int predictPixel(const cv::Mat &image, int row, int col, int channel) {
+  int a = (col > 0) ? image.at<cv::Vec3b>(row, col - 1)[channel] : 0;
+  int b = (row > 0) ? image.at<cv::Vec3b>(row - 1, col)[channel] : 0;
+  int c =
+      (row > 0 && col > 0) ? image.at<cv::Vec3b>(row - 1, col - 1)[channel] : 0;
+
+  // JPEG-LS prediction formula
+  if (c >= std::max(a, b)) {
+    return std::min(a, b);
+  } else if (c <= std::min(a, b)) {
+    return std::max(a, b);
+  } else {
+    return a + b - c;
+  }
+}
 
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
-  if (image.empty()) {
-    throw std::runtime_error("Input image is empty.");
-  }
   BitStream bitStream(outputFile, true);
 
   // Write image dimensions
-  bitStream.writeBits(image.rows, 32);
-  bitStream.writeBits(image.cols, 32);
+  bitStream.writeBits(image.rows, 16);
+  bitStream.writeBits(image.cols, 16);
 
-  // Encode pixel data
   for (int row = 0; row < image.rows; ++row) {
     for (int col = 0; col < image.cols; ++col) {
-      cv::Vec3b pixel = image.at<cv::Vec3b>(row, col);
       for (int channel = 0; channel < 3; ++channel) {
-        golomb.encodeInteger(pixel[channel], bitStream);
+        int actualValue = image.at<cv::Vec3b>(row, col)[channel];
+        int predictedValue = predictPixel(image, row, col, channel);
+        int residual = actualValue - predictedValue;
+        golomb.encodeInteger(residual, bitStream);
       }
     }
   }
@@ -27,22 +41,26 @@ void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
 
 cv::Mat ImageCodec::decode(const std::string &inputFile) {
   BitStream bitStream(inputFile, false);
+
   // Read image dimensions
-  int rows = bitStream.readBits(32);
-  int cols = bitStream.readBits(32);
+  int rows = bitStream.readBits(16);
+  int cols = bitStream.readBits(16);
 
   cv::Mat decodedImage(rows, cols, CV_8UC3);
 
-  // Decode pixel data
   for (int row = 0; row < rows; ++row) {
     for (int col = 0; col < cols; ++col) {
-      cv::Vec3b pixel;
       for (int channel = 0; channel < 3; ++channel) {
-        pixel[channel] = static_cast<uchar>(golomb.decodeInteger(bitStream));
+        int predictedValue = predictPixel(decodedImage, row, col, channel);
+
+        // Decode residual using Golomb coding
+        int residual = golomb.decodeInteger(bitStream);
+
+        int actualValue = predictedValue + residual;
+        decodedImage.at<cv::Vec3b>(row, col)[channel] =
+            static_cast<uchar>(actualValue);
       }
-      decodedImage.at<cv::Vec3b>(row, col) = pixel;
     }
   }
-
   return decodedImage;
 }
