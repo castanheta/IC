@@ -19,7 +19,6 @@ void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
     for (int col = 0; col < image.cols; ++col) {
       cv::Vec3b pixel = image.at<cv::Vec3b>(row, col);
       for (int channel = 0; channel < 3; ++channel) {
-        std::cout << "Encoding pixel: " << pixel << std::endl;
         golomb.encodeInteger(pixel[channel], bitStream);
       }
     }
