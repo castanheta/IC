@@ -39,32 +39,20 @@ uint32_t AudioCodec::calculateOptimalM(const std::vector<int>& residuals,
 
 int AudioCodec::predictSample(const std::vector<int>& samples, int currentPos) {
     if (currentPos <= 0) return 0;
-
-    // Use just the previous sample for more stable prediction
     return samples[currentPos - 1];
 }
 
-int AudioCodec::predictStereoSample(const std::vector<int>& leftChannel,
-                                    const std::vector<int>& rightChannel,
-                                    int currentPos, bool isRight) {
-    if (currentPos < 0) return 0;
+int AudioCodec::predictNextSample(const std::vector<std::vector<int>>& channels,
+                                  int channel, size_t pos) {
+    if (pos == 0) return 0;
 
-    // Get temporal prediction (from same channel)
-    int temporalPred =
-        predictSample(isRight ? rightChannel : leftChannel, currentPos);
-
-    // Only do cross-channel prediction if we have valid samples
-    if (currentPos >= 0) {
-        if (isRight) {
-            // For right channel, use current left sample
-            return (temporalPred + leftChannel[currentPos]) / 2;
-        } else {
-            // For left channel, just use temporal prediction
-            return temporalPred;
-        }
+    if (channels.size() == 2 && channel == 1) {  // Right channel of stereo
+        int prevRight = (pos > 0) ? channels[1][pos - 1] : 0;
+        int currLeft = channels[0][pos];
+        return (prevRight + currLeft) / 2;
+    } else {  // Left channel or mono
+        return channels[channel][pos - 1];
     }
-
-    return temporalPred;
 }
 
 std::vector<std::vector<int>> AudioCodec::readAudioFile(
@@ -133,26 +121,18 @@ void AudioCodec::encode(const std::string& inputFile,
     BitStream bs(outputFile, true);
     header.write(bs);
 
-    // Process each channel
     for (int ch = 0; ch < channels.size(); ch++) {
-        // Write channel marker for debugging
         std::cout << "Encoding channel " << ch << std::endl;
 
-        // First calculate all residuals for this channel
         std::vector<int> residuals(header.numSamples);
         for (size_t i = 0; i < header.numSamples; i++) {
             int predicted;
-            if (header.isStereo && ch == 1) {  // Right channel
-                predicted = (i > 0)
-                                ? channels[1][i - 1]
-                                : 0;  // Use previous sample from right channel
-                if (i < header.numSamples) {
-                    predicted = (predicted + channels[0][i]) /
-                                2;  // Mix with current left sample
-                }
-            } else {  // Left channel or mono
-                predicted = (i > 0) ? channels[ch][i - 1]
-                                    : 0;  // Just use previous sample
+            if (header.isStereo && ch == 1) {
+                int prevRight = (i > 0) ? channels[1][i - 1] : 0;
+                int currLeft = channels[0][i];
+                predicted = (prevRight + currLeft) / 2;
+            } else {
+                predicted = (i > 0) ? channels[ch][i - 1] : 0;
             }
 
             residuals[i] = channels[ch][i] - predicted;
@@ -164,7 +144,6 @@ void AudioCodec::encode(const std::string& inputFile,
             }
         }
 
-        // Then encode the residuals in blocks
         for (size_t i = 0; i < header.numSamples; i += ADAPT_INTERVAL) {
             uint32_t m;
             if (useFixedM) {
@@ -189,19 +168,6 @@ void AudioCodec::encode(const std::string& inputFile,
     }
 }
 
-int AudioCodec::predictNextSample(const std::vector<std::vector<int>>& channels,
-                                  int channel, size_t pos) {
-    if (pos == 0) return 0;
-
-    if (channels.size() == 2 && channel == 1) {  // Right channel of stereo
-        int prevRight = channels[1][pos - 1];
-        int currLeft = channels[0][pos];
-        return (prevRight + currLeft) / 2;
-    } else {  // Left channel or mono
-        return channels[channel][pos - 1];
-    }
-}
-
 void AudioCodec::decode(const std::string& inputFile,
                         const std::string& outputFile) {
     BitStream bs(inputFile, false);
@@ -213,7 +179,7 @@ void AudioCodec::decode(const std::string& inputFile,
 
     std::vector<std::vector<int>> channels(header.isStereo ? 2 : 1);
     for (auto& channel : channels) {
-        channel.resize(header.numSamples, 0);  // Initialize with zeros
+        channel.resize(header.numSamples, 0);
     }
 
     uint32_t fixedM = 0;
