@@ -24,23 +24,17 @@ static int predictPixel(const cv::Mat &image, int row, int col, int channel) {
 }
 
 static int quantize(int value, int quantLevel) {
-  if (quantLevel == 0) {
-    return value;
+  if (quantLevel < 0 || quantLevel > 7) {
+    throw std::invalid_argument("quantLevel must be between 0 and 7");
   }
-  if (quantLevel < 1 || quantLevel > 7) {
-    throw std::invalid_argument("quantLevel must be between 1 and 7");
-  }
-  return static_cast<int>(std::round(static_cast<float>(value) / quantLevel));
+  return value >> quantLevel;
 }
 
 static int dequantize(int value, int quantLevel) {
-  if (quantLevel == 0) {
-    return value;
+  if (quantLevel < 0 || quantLevel > 7) {
+    throw std::invalid_argument("quantLevel must be between 0 and 7");
   }
-  if (quantLevel < 1 || quantLevel > 7) {
-    throw std::invalid_argument("quantLevel must be between 1 and 7");
-  }
-  return value * quantLevel;
+  return value << quantLevel; // Perform bitwise left shift
 }
 
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
