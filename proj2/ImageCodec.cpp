@@ -3,7 +3,6 @@
 
 ImageCodec::ImageCodec(uint32_t m) : golomb(m) {}
 
-// Helper function for spatial prediction
 static int predictPixel(const cv::Mat &image, int row, int col, int channel) {
   int a = (col > 0) ? image.at<cv::Vec3b>(row, col - 1)[channel] : 0;
   int b = (row > 0) ? image.at<cv::Vec3b>(row - 1, col)[channel] : 0;
@@ -23,7 +22,6 @@ static int predictPixel(const cv::Mat &image, int row, int col, int channel) {
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
   BitStream bitStream(outputFile, true);
 
-  // Write image dimensions
   bitStream.writeBits(image.rows, 16);
   bitStream.writeBits(image.cols, 16);
 

@@ -13,6 +13,7 @@ set(SOURCE_FILES
     GolombCoding.cpp
     ImageCodec.cpp
     VideoCodecIntra.cpp
+    VideoLossyCodec.cpp
     AudioCodec.cpp
 )
 
@@ -32,6 +33,7 @@ add_executable(decoder decoder.cpp ${SOURCE_FILES})
 add_executable(golombTest GolombTest.cpp ${SOURCE_FILES})
 add_executable(imageTest ImageCodecTest.cpp ${SOURCE_FILES})
 add_executable(videoIntraTest VideoCodecIntraTest.cpp ${SOURCE_FILES})
+add_executable(videoLossyTest VideoLossyCodecTest.cpp ${SOURCE_FILES})
 add_executable(audioTest AudioCodecTest.cpp ${SOURCE_FILES})
 
 # Link sndfile library to relevant targets
@@ -40,6 +42,7 @@ target_link_libraries(decoder ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
 target_link_libraries(golombTest ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
 target_link_libraries(imageTest ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
 target_link_libraries(videoIntraTest ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
+target_link_libraries(videoLossyTest ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
 target_link_libraries(audioTest ${OpenCV_LIBS} ${SNDFILE_LIBRARIES})
 
 
