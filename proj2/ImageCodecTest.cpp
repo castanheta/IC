@@ -21,10 +21,9 @@ bool verifyImages(const cv::Mat &original, const cv::Mat &decoded) {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 5) {
+  if (argc != 6) {
     cerr << "Usage: " << argv[0]
-         << " <input_image> <encoded_file> <decoded_image> <m(golomb "
-            "parameter)>\n";
+         << " <input_image> <encoded_file> <decoded_image> <m(golomb parameter)> <quantization_level>\n";
     return 1;
   }
 
@@ -32,9 +31,13 @@ int main(int argc, char *argv[]) {
   string encodedFile = argv[2];
   string decodedImage = argv[3];
   uint32_t m = stoi(argv[4]);
+  uint32_t quantizationLevel = stoi(argv[5]);
 
   try {
     ImageCodec codec(m);
+
+    cout << "Setting quantization level to " << quantizationLevel << "...\n";
+    codec.setQuantizationLevel(quantizationLevel);
 
     cout << "Loading input image...\n";
     cv::Mat originalImage = cv::imread(inputImage, cv::IMREAD_COLOR);
@@ -55,7 +58,7 @@ int main(int argc, char *argv[]) {
     if (verifyImages(originalImage, decodedImageMat)) {
       cout << "All pixels successfully encoded and decoded!\n";
     } else {
-      cout << "Mismatch detected in pixel data!\n";
+      cout << "Mismatch detected in pixel data due to lossy quantization!\n";
     }
   } catch (const exception &e) {
     cerr << "Error: " << e.what() << endl;

@@ -9,12 +9,13 @@
 class ImageCodec {
 public:
   explicit ImageCodec(uint32_t m);
-
+  void setQuantizationLevel(uint32_t level); // Method to set quantization level
   void encode(const cv::Mat &image, const std::string &outputFile);
   cv::Mat decode(const std::string &inputFile);
 
 private:
   GolombCoding golomb;
+  uint32_t quantLevel; // Quantization level
 };
 
 #endif // IMAGE_CODEC_H
