@@ -76,7 +76,8 @@ void createVideoFromImages(const string &outputFolder,
       " -colorspace bt709" +  // Set color space to Rec.709 (standard for video)
       " -color_range tv" +    // Set color range to limited (16-235)
       " -strict -1 " +        // Allow legacy formats
-      decodedVideoPath;       // Output path
+      decodedVideoPath +      // Output path
+      " > /dev/null 2>&1";    // Redirect stdout and stderr to null
 
   // Execute the command
   if (system(command.c_str()) != 0) {

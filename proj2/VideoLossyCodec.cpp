@@ -30,7 +30,7 @@ static int dequantize(int value, int quantLevel) {
   if (quantLevel < 0 || quantLevel > 7) {
     throw std::invalid_argument("quantLevel must be between 0 and 7");
   }
-  return value << quantLevel; // Perform bitwise left shift
+  return value << quantLevel;
 }
 
 VideoLossyCodec::VideoLossyCodec(uint32_t m) : golomb(m) {}
