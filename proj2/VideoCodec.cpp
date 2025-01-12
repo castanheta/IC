@@ -1,4 +1,4 @@
-#include "VideoLossyCodec.h"
+#include "VideoCodec.h"
 #include "BitStream.h"
 #include <cmath>
 #include <stdexcept>
@@ -33,9 +33,9 @@ static int dequantize(int value, int quantLevel) {
   return value << quantLevel; // Perform bitwise left shift
 }
 
-VideoLossyCodec::VideoLossyCodec(uint32_t m) : golomb(m) {}
+VideoCodec::VideoCodec(uint32_t m) : golomb(m) {}
 
-void VideoLossyCodec::encode(const std::vector<cv::Mat> &frames,
+void VideoCodec::encode(const std::vector<cv::Mat> &frames,
                              const std::string &outputFile, uint32_t golombM,
                              int quantizationLevel) {
   if (frames.empty()) {
@@ -83,7 +83,7 @@ void VideoLossyCodec::encode(const std::vector<cv::Mat> &frames,
   }
 }
 
-std::vector<cv::Mat> VideoLossyCodec::decode(const std::string &inputFile) {
+std::vector<cv::Mat> VideoCodec::decode(const std::string &inputFile) {
   BitStream bitStream(inputFile, false);
 
   // Read Golomb parameter

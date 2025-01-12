@@ -1,4 +1,4 @@
-#include "VideoCodecIntra.h"
+#include "VideoCodec.h"
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -6,6 +6,30 @@
 #include <stdexcept>
 
 using namespace std;
+namespace fs = std::filesystem;
+
+double calculatePSNR(const cv::Mat &original, const cv::Mat &decoded) {
+  if (original.empty() || decoded.empty() ||
+      original.size() != decoded.size() || original.type() != decoded.type()) {
+    throw runtime_error("Invalid input for PSNR calculation.");
+  }
+
+  cv::Mat diff;
+  cv::absdiff(original, decoded, diff);
+  diff.convertTo(diff, CV_32F);
+  diff = diff.mul(diff);
+
+  cv::Scalar sse = cv::sum(diff); // Sum of squared errors
+
+  double mse =
+      (sse[0] + sse[1] + sse[2]) / (original.channels() * original.total());
+  if (mse == 0) {
+    return INFINITY; // No difference between frames
+  }
+
+  double psnr = 10.0 * log10((255 * 255) / mse);
+  return psnr;
+}
 
 void readVideoFrames(const string &videoPath, vector<cv::Mat> &frames,
                      int &width, int &height, int &fps) {
@@ -35,8 +59,8 @@ void writeDecodedFramesToImages(const vector<cv::Mat> &frames,
     throw runtime_error("No frames to write to output folder.");
   }
 
-  if (!filesystem::exists(outputFolder)) {
-    filesystem::create_directories(outputFolder);
+  if (!fs::exists(outputFolder)) {
+    fs::create_directories(outputFolder);
   }
 
   for (size_t i = 0; i < frames.size(); ++i) {
@@ -61,7 +85,6 @@ void createVideoFromImages(const string &outputFolder,
   int dar_width = sar_width * width;
   int dar_height = sar_height * height;
 
-  // Construct the ffmpeg command
   string command =
       "ffmpeg -y -framerate " +
       frameRate + // Set the exact frame rate (30000/1001)
@@ -86,9 +109,10 @@ void createVideoFromImages(const string &outputFolder,
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 5) {
+  if (argc != 6) {
     cerr << "Usage: " << argv[0]
-         << " <input_video> <encoded_file> <decoded_video> <golomb_m>\n";
+         << " <input_video> <encoded_file> <decoded_video> <golomb_m> "
+            "<quantization_level>\n";
     return 1;
   }
 
@@ -96,54 +120,50 @@ int main(int argc, char *argv[]) {
   string encodedFile = argv[2];
   string decodedVideo = argv[3];
   uint32_t golombM = stoi(argv[4]);
-
-  string tempOutputFolder = "./decoded_frames";
+  uint32_t quantLevel = stoi(argv[5]);
+  string tmpFolder = "tmp_decoded_frames";
 
   try {
-    // Read input video frames
     vector<cv::Mat> originalFrames;
     int width, height, fps;
     readVideoFrames(inputVideo, originalFrames, width, height, fps);
-    cout << "Read " << originalFrames.size() << " frames from input video."
-         << endl;
 
-    // Encode video
-    VideoCodecIntra codec(golombM);
-    codec.encode(originalFrames, encodedFile, golombM);
-    cout << "Encoded video to file: " << encodedFile << endl;
+    VideoCodec codec(golombM);
+    codec.encode(originalFrames, encodedFile, golombM, quantLevel);
 
-    // Decode video
     vector<cv::Mat> decodedFrames = codec.decode(encodedFile);
-    cout << "Decoded video from file: " << encodedFile << endl;
 
-    // Verify frame count
     if (originalFrames.size() != decodedFrames.size()) {
       cerr << "Mismatch in frame count between original and decoded video."
            << endl;
       return 1;
     }
 
-    // Verify frame data
+    writeDecodedFramesToImages(decodedFrames, tmpFolder);
+    createVideoFromImages(tmpFolder, decodedVideo, width, height, fps);
+
+    double totalPSNR = 0.0;
     for (size_t i = 0; i < originalFrames.size(); ++i) {
-      cv::Mat diff;
-      cv::absdiff(originalFrames[i], decodedFrames[i], diff);
-      cv::Scalar avgDiff = cv::mean(diff);
-      if (cv::countNonZero(avgDiff) != 0) {
-        cerr << "Mismatch in frame " << i << endl;
-        return 1;
-      }
+      double psnr = calculatePSNR(originalFrames[i], decodedFrames[i]);
+      totalPSNR += psnr;
     }
-    cout << "All frames match between original and decoded video." << endl;
+    double averagePSNR = totalPSNR / originalFrames.size();
 
-    // Write decoded frames to images
-    writeDecodedFramesToImages(decodedFrames, tempOutputFolder);
+    ifstream inputFile(inputVideo, ios::binary | ios::ate);
+    ifstream encodedFileStream(encodedFile, ios::binary | ios::ate);
 
-    // Create video from images using ffmpeg
-    createVideoFromImages(tempOutputFolder, decodedVideo, width, height, fps);
-    cout << "Decoded video saved to: " << decodedVideo << endl;
+    size_t originalSize = inputFile.tellg();
+    size_t encodedSize = encodedFileStream.tellg();
 
-    // Cleanup temporary frames
-    filesystem::remove_all(tempOutputFolder);
+    double compressionRate =
+        (1.0 - (double(encodedSize) / originalSize)) * 100.0;
+
+    cout << originalSize << endl;
+    cout << encodedSize << endl;
+    cout << compressionRate << endl;
+    cout << averagePSNR << endl;
+
+    fs::remove_all(tmpFolder);
 
   } catch (const exception &e) {
     cerr << "Error: " << e.what() << endl;
