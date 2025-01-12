@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pied Piper</title>
+    <link rel="icon" href="assets/logo2.png" type="image/png" />
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        padding-top: 70px;
+      }
+      .tabs {
+        display: flex;
+        margin-bottom: 20px;
+      }
+      .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        background-color: #f0f0f0;
+        margin-right: 5px;
+        border-radius: 5px 5px 0 0;
+      }
+      .tab.active {
+        background-color: #28a745;
+        color: white;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .popup,
+      .error-popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 30px;
+        background-color: #fff;
+        border: 2px solid #28a745;
+        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+        width: 500px;
+        z-index: 999;
+        border-radius: 10px;
+      }
+      .popup h2,
+      .error-popup h2 {
+        margin-top: 0;
+        font-weight: bold;
+      }
+      .popup p,
+      .error-popup p {
+        font-size: 16px;
+      }
+      .popup .btn,
+      .error-popup .btn {
+        margin-top: 10px;
+      }
+      .navbar {
+        margin-bottom: 20px;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+      }
+      .navbar-brand img {
+        height: 50px;
+      }
+      h1 {
+        font-weight: bold;
+        font-size: 2rem;
+      }
+      .spinner-container {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1001;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a class="navbar-brand" href="#">
+        <img src="assets/logo2.png" alt="Logo" />
+      </a>
+    </nav>
+
+    <div class="container">
+      <h1 class="text-center mt-5 mb-5">
+        Pied Piper - Media file compressor
+      </h1>
+      <div class="tabs">
+        <div class="tab active" data-tab="image">Image</div>
+        <div class="tab" data-tab="video">Video</div>
+        <div class="tab" data-tab="audio">Audio</div>
+      </div>
+
+      <div class="tab-content active" id="image">
+        <form
+          action="/image"
+          method="post"
+          enctype="multipart/form-data"
+          onsubmit="submitForm(event, 'image')"
+        >
+          <div class="form-group">
+            <label for="file">Image File:</label>
+            <input
+              type="file"
+              class="form-control"
+              name="file"
+              id="file"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="golomb_param">Golomb Parameter:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="golomb_param"
+              id="golomb_param"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="quant_level">Quantization Level:</label>
+            <select class="form-control" name="quant_level" id="quant_level">
+              <option value="0" selected>None</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success">Upload</button>
+        </form>
+      </div>
+
+      <div class="tab-content" id="video">
+        <form
+          action="/video"
+          method="post"
+          enctype="multipart/form-data"
+          onsubmit="submitForm(event, 'video')"
+        >
+          <div class="form-group">
+            <label for="file">Video File:</label>
+            <input
+              type="file"
+              class="form-control"
+              name="file"
+              id="file"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="golomb_param">Golomb Parameter:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="golomb_param"
+              id="golomb_param"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="quant_level">Quantization Level:</label>
+            <select class="form-control" name="quant_level" id="quant_level">
+              <option value="0" selected>None</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success">Upload</button>
+        </form>
+      </div>
+
+      <div class="tab-content" id="audio">
+        <form
+          action="/audio"
+          method="post"
+          enctype="multipart/form-data"
+          onsubmit="submitForm(event, 'audio')"
+        >
+          <div class="form-group">
+            <label for="file">Audio File:</label>
+            <input
+              type="file"
+              class="form-control"
+              name="file"
+              id="file"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="golomb_param">Golomb Parameter:</label>
+            <input
+              type="text"
+              class="form-control"
+              name="golomb_param"
+              id="golomb_param"
+            />
+          </div>
+          <button type="submit" class="btn btn-success">Upload</button>
+        </form>
+      </div>
+
+      <div class="spinner-container" id="spinner-container">
+        <div class="spinner-border text-success" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+
+      <div class="popup" id="popup">
+        <h2 mt-5 mb-5>Results</h2>
+        <p id="compression-rate"></p>
+        <p id="original-size"></p>
+        <p id="encoded-size"></p>
+        <p id="psnr"></p>
+        <a
+          id="download-btn"
+          href="#"
+          class="btn btn-success"
+          style="display: none"
+          >Download</a
+        >
+        <button class="btn btn-secondary" onclick="closePopup()">Close</button>
+      </div>
+
+      <div class="error-popup" id="error-popup">
+        <h2>Error</h2>
+        <p id="error-message"></p>
+        <button class="btn btn-danger" onclick="closeErrorPopup()">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const tabName = tab.getAttribute("data-tab");
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("active"));
+          document
+            .querySelectorAll(".tab-content")
+            .forEach((tc) => tc.classList.remove("active"));
+          tab.classList.add("active");
+          document.getElementById(tabName).classList.add("active");
+        });
+      });
+
+      function submitForm(event, type) {
+        event.preventDefault();
+        document.getElementById("spinner-container").style.display = "block";
+
+        const formData = new FormData(event.target);
+        fetch(`/${type}`, { method: "POST", body: formData })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                "Server returned an error: " + response.statusText,
+              );
+            }
+            return response.json();
+          })
+          .then((data) => {
+            document.getElementById("spinner-container").style.display = "none";
+            if (data.status === "success") {
+              // Show success popup
+              showPopup(data);
+            } else {
+              // Show error popup with a custom message if success flag is not true
+              showErrorPopup("An error occurred while processing the file.");
+            }
+          })
+          .catch((error) => {
+            document.getElementById("spinner-container").style.display = "none";
+            // Show the error popup with the actual error message
+            showErrorPopup(error.message);
+          });
+      }
+
+      function showPopup(data) {
+        document.getElementById("compression-rate").textContent =
+          `Compression Rate: ${data.compression_rate.toFixed(2)}%`;
+        document.getElementById("original-size").textContent =
+          `Original File Size: ${data.original_file_size} Bytes`;
+        document.getElementById("encoded-size").textContent =
+          `Encoded File Size: ${data.encoded_file_size} Bytes`;
+
+        if (data.psnr !== undefined) {
+          document.getElementById("psnr").textContent =
+            `Peak Signal-to-Noise Ratio: ${data.psnr.toFixed(2)} dB`;
+        } else {
+          document.getElementById("psnr").textContent = "";
+        }
+
+        const downloadBtn = document.getElementById("download-btn");
+        if (data.download_url) {
+          downloadBtn.style.display = "inline-block";
+          downloadBtn.setAttribute("href", data.download_url);
+        } else {
+          downloadBtn.style.display = "none";
+        }
+
+        const popup = document.getElementById("popup");
+        popup.style.display = "block";
+      }
+
+      function showErrorPopup(message) {
+        document.getElementById("error-message").textContent = message;
+        const errorPopup = document.getElementById("error-popup");
+        errorPopup.style.display = "block";
+
+        setTimeout(closeErrorPopup, 5000);
+      }
+
+      function closePopup() {
+        const popup = document.getElementById("popup");
+        popup.style.display = "none";
+      }
+
+      function closeErrorPopup() {
+        const errorPopup = document.getElementById("error-popup");
+        errorPopup.style.display = "none";
+      }
+    </script>
+  </body>
+</html>
