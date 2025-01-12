@@ -1,5 +1,8 @@
 # Pied Piper: Multimedia Codec Tester
 
+![demo](assets/demo.gif)
+
+
 Pied Piper is a web-based server application for testing multimedia codecs, including image, video, and audio codecs. The application allows users to upload files, apply compression using custom Golomb parameters and quantization levels, and then view the results, including compression rates, file sizes, and PSNR (Peak Signal-to-Noise Ratio). Users can also download the decoded files for verification.
 
 ## Features
