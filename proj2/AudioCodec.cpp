@@ -126,8 +126,12 @@ void AudioCodec::encode(const std::string &inputFile,
     std::vector<int> residuals(header.numSamples);
     for (size_t i = 0; i < header.numSamples; i++) {
       int predicted;
-      if (header.isStereo) {
-        predicted = predictStereoSample(channels[0], channels[1], i, ch == 1);
+      if (header.isStereo && ch == 1) {
+        if (i == 0) {
+            predicted = channels[0][0];
+        } else {
+            predicted = (channels[1][i - 1] + channels[0][i]) / 2;
+        }
       } else {
         predicted = (i > 0) ? channels[ch][i - 1] : 0;
       }
@@ -160,12 +164,15 @@ void AudioCodec::encode(const std::string &inputFile,
 
 int AudioCodec::predictNextSample(const std::vector<std::vector<int>> &channels,
                                   int channel, size_t pos) {
-  if (pos == 0)
-    return 0;
-
   if (channels.size() == 2 && channel == 1) {
+    if (pos == 0) {
+        return channels[0][0];
+    }
     return (channels[1][pos - 1] + channels[0][pos]) / 2;
   } else {
+    if (pos == 0) {
+        return 0;
+    }
     return channels[channel][pos - 1];
   }
 }
