@@ -49,18 +49,11 @@ int AudioCodec::predictStereoSample(const std::vector<int> &leftChannel,
   if (currentPos < 0)
     return 0;
 
-  int temporalPred =
-      predictSample(isRight ? rightChannel : leftChannel, currentPos);
-
-  if (currentPos >= 0) {
-    if (isRight) {
-      return (temporalPred + leftChannel[currentPos]) / 2;
-    } else {
-      return temporalPred;
-    }
+  if (isRight) {
+    return (rightChannel[currentPos - 1] + leftChannel[currentPos]) / 2;
+  } else {
+    return leftChannel[currentPos - 1];
   }
-
-  return temporalPred;
 }
 
 std::vector<std::vector<int>>
@@ -133,15 +126,11 @@ void AudioCodec::encode(const std::string &inputFile,
     std::vector<int> residuals(header.numSamples);
     for (size_t i = 0; i < header.numSamples; i++) {
       int predicted;
-      if (header.isStereo && ch == 1) {
-        predicted = (i > 0) ? channels[1][i - 1] : 0;
-        if (i < header.numSamples) {
-          predicted = (predicted + channels[0][i]) / 2;
-        }
+      if (header.isStereo) {
+        predicted = predictStereoSample(channels[0], channels[1], i, ch == 1);
       } else {
         predicted = (i > 0) ? channels[ch][i - 1] : 0;
       }
-
       residuals[i] = channels[ch][i] - predicted;
     }
 
@@ -175,9 +164,7 @@ int AudioCodec::predictNextSample(const std::vector<std::vector<int>> &channels,
     return 0;
 
   if (channels.size() == 2 && channel == 1) {
-    int prevRight = channels[1][pos - 1];
-    int currLeft = channels[0][pos];
-    return (prevRight + currLeft) / 2;
+    return (channels[1][pos - 1] + channels[0][pos]) / 2;
   } else {
     return channels[channel][pos - 1];
   }
@@ -217,4 +204,3 @@ void AudioCodec::decode(const std::string &inputFile,
 
   writeAudioFile(outputFile, channels, header);
 }
-
