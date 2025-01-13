@@ -24,8 +24,8 @@ Pied Piper is a web-based server application for testing multimedia codecs, incl
 
 #### 1. Clone the Repository
 ```bash
-git clone <repo_url>
-cd <repo_name>
+git clone https://github.com/castanheta/IC.git
+cd IC/proj2
 ```
 
 #### 2. Build the Docker Image
@@ -62,8 +62,8 @@ sudo apt-get install -y \
 
 #### 1. Clone the Repository
 ```bash
-git clone <repo_url>
-cd <repo_name>
+git clone https://github.com/castanheta/IC.git
+cd IC/proj2
 ```
 
 #### 2. Install Python Dependencies
