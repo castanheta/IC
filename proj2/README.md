@@ -102,9 +102,7 @@ python server.py
 1. Open the browser and navigate to [localhost:5000](localhost:5000).
 2. Choose the media type (image, video or audio).
 3. Upload the media file.
-4. Enter the required parameters:
-   - **Golomb Parameter**: Compression parameter.
-   - **Quantization Level**: (Optional) Specify a quantization level for lossy compression.
+4. Enter the required parameters.
 5. Submit the form.
 
 ### Viewing Results
