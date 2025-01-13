@@ -1,7 +1,6 @@
 #include "AudioCodec.h"
 
 #include <cmath>
-#include <iostream>
 #include <sndfile.hh>
 #include <stdexcept>
 
@@ -128,9 +127,9 @@ void AudioCodec::encode(const std::string &inputFile,
       int predicted;
       if (header.isStereo && ch == 1) {
         if (i == 0) {
-            predicted = channels[0][0];
+          predicted = channels[0][0];
         } else {
-            predicted = (channels[1][i - 1] + channels[0][i]) / 2;
+          predicted = (channels[1][i - 1] + channels[0][i]) / 2;
         }
       } else {
         predicted = (i > 0) ? channels[ch][i - 1] : 0;
@@ -142,9 +141,6 @@ void AudioCodec::encode(const std::string &inputFile,
       uint32_t m;
       if (useFixedM) {
         m = fixedM;
-        if (i == 0) {
-          bs.writeBits(m, 16);
-        }
       } else {
         int length =
             std::min(ADAPT_INTERVAL, static_cast<int>(header.numSamples - i));
@@ -166,12 +162,12 @@ int AudioCodec::predictNextSample(const std::vector<std::vector<int>> &channels,
                                   int channel, size_t pos) {
   if (channels.size() == 2 && channel == 1) {
     if (pos == 0) {
-        return channels[0][0];
+      return channels[0][0];
     }
     return (channels[1][pos - 1] + channels[0][pos]) / 2;
   } else {
     if (pos == 0) {
-        return 0;
+      return 0;
     }
     return channels[channel][pos - 1];
   }
@@ -188,9 +184,8 @@ void AudioCodec::decode(const std::string &inputFile,
     channel.resize(header.numSamples, 0);
   }
 
-  uint32_t fixedM = 0;
   if (header.useFixedM) {
-    fixedM = bs.readBits(16);
+    uint32_t fixedM = header.fixedM;
   }
 
   for (int ch = 0; ch < channels.size(); ch++) {
