@@ -20,12 +20,14 @@ WORKDIR /app
 # Copy the entire project to the container
 COPY . /app
 
-# Create the build directory
-RUN mkdir -p build
+RUN mkdir -p bin
 
 # Build the C++ code
-WORKDIR /app/build
-RUN cmake .. && make
+WORKDIR /app/bin
+RUN cmake ../src && make
+
+# Remove the src directory
+RUN rm -rf /app/src
 
 # Install Python requirements
 WORKDIR /app/server

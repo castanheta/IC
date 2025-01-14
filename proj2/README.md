@@ -75,11 +75,11 @@ pip install -r server/requirements.txt
 ```
 
 #### 3. Build the Codec Binaries
-Navigate to the `build/` directory and compile the binaries:
+Navigate to the `bin/` directory and compile the binaries:
 ```bash
-mkdir build
-cd build
-cmake ..
+mkdir bin
+cd bin
+cmake ../src
 make
 ```
 Ensure the following binaries are created:

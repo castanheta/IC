@@ -87,7 +87,7 @@ def upload_image():
     golomb_param = request.form["golomb_param"]
     quant_level = request.form.get("quant_level", "0")
 
-    command = f"./../build/imageTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param} {quant_level}"
+    command = f"./../bin/imageTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param} {quant_level}"
     return handle_file_upload(file, command)
 
 
@@ -106,7 +106,7 @@ def upload_video():
     golomb_param = request.form["golomb_param"]
     quant_level = request.form.get("quant_level", "0")
 
-    command = f"./../build/videoTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param} {quant_level}"
+    command = f"./../bin/videoTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param} {quant_level}"
     return handle_file_upload(file, command)
 
 
@@ -121,7 +121,7 @@ def upload_audio():
 
     golomb_param = request.form.get("golomb_param", "")
 
-    command = f"./../build/audioTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param}"
+    command = f"./../bin/audioTest {{file_path}} {{encoded_file_path}} {{decoded_file_path}} {golomb_param}"
     return handle_file_upload(file, command)
 
 
