@@ -30,7 +30,7 @@ static int dequantize(int value, int quantLevel) {
   if (quantLevel < 0 || quantLevel > 7) {
     throw std::invalid_argument("quantLevel must be between 0 and 7");
   }
-  return value << quantLevel; // Perform bitwise left shift
+  return value << quantLevel;
 }
 
 VideoCodec::VideoCodec(uint32_t m) : golomb(m) {}
@@ -44,10 +44,8 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
 
   BitStream bitStream(outputFile, true);
 
-  // Write Golomb parameter
   bitStream.writeBits(golombM, 32);
 
-  // Write video dimensions and number of frames
   int width = frames[0].cols;
   int height = frames[0].rows;
   int numFrames = static_cast<int>(frames.size());
@@ -56,10 +54,8 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
   bitStream.writeBits(height, 32);
   bitStream.writeBits(numFrames, 32);
 
-  // Write quantization level
   bitStream.writeBits(quantizationLevel, 16);
 
-  // Encode each frame
   for (const auto &originalFrame : frames) {
     if (originalFrame.cols != width || originalFrame.rows != height ||
         originalFrame.type() != CV_8UC3) {
@@ -67,7 +63,6 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
           "All frames must have the same dimensions and type.");
     }
 
-    // Create a mutable copy of the frame
     cv::Mat frame = originalFrame.clone();
 
     for (int row = 0; row < frame.rows; ++row) {
@@ -95,22 +90,17 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
 std::vector<cv::Mat> VideoCodec::decode(const std::string &inputFile) {
   BitStream bitStream(inputFile, false);
 
-  // Read Golomb parameter
   uint32_t golombM = bitStream.readBits(32);
-  GolombCoding golombDecoder(golombM);
-
-  // Read video dimensions and number of frames
   int width = bitStream.readBits(32);
   int height = bitStream.readBits(32);
   int numFrames = bitStream.readBits(32);
-
-  // Read quantization level
   int quantizationLevel = bitStream.readBits(16);
+
+  GolombCoding golombDecoder(golombM);
 
   std::vector<cv::Mat> frames;
   frames.reserve(numFrames);
 
-  // Decode each frame
   for (int i = 0; i < numFrames; ++i) {
     cv::Mat frame(height, width, CV_8UC3);
     for (int row = 0; row < height; ++row) {
@@ -118,13 +108,10 @@ std::vector<cv::Mat> VideoCodec::decode(const std::string &inputFile) {
         for (int channel = 0; channel < 3; ++channel) {
           int predictedValue = predictPixel(frame, row, col, channel);
 
-          // Decode quantized residual using Golomb coding
           int quantizedResidual = golombDecoder.decodeInteger(bitStream);
-
-          // Dequantize residual
           int residual = dequantize(quantizedResidual, quantizationLevel);
-
           int actualValue = predictedValue + residual;
+
           frame.at<cv::Vec3b>(row, col)[channel] =
               static_cast<uchar>(std::clamp(actualValue, 0, 255));
         }
