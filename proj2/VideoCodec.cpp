@@ -36,8 +36,8 @@ static int dequantize(int value, int quantLevel) {
 VideoCodec::VideoCodec(uint32_t m) : golomb(m) {}
 
 void VideoCodec::encode(const std::vector<cv::Mat> &frames,
-                             const std::string &outputFile, uint32_t golombM,
-                             int quantizationLevel) {
+                        const std::string &outputFile, uint32_t golombM,
+                        int quantizationLevel) {
   if (frames.empty()) {
     throw std::runtime_error("No frames to encode.");
   }
@@ -60,12 +60,15 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
   bitStream.writeBits(quantizationLevel, 16);
 
   // Encode each frame
-  for (const auto &frame : frames) {
-    if (frame.cols != width || frame.rows != height ||
-        frame.type() != CV_8UC3) {
+  for (const auto &originalFrame : frames) {
+    if (originalFrame.cols != width || originalFrame.rows != height ||
+        originalFrame.type() != CV_8UC3) {
       throw std::runtime_error(
           "All frames must have the same dimensions and type.");
     }
+
+    // Create a mutable copy of the frame
+    cv::Mat frame = originalFrame.clone();
 
     for (int row = 0; row < frame.rows; ++row) {
       for (int col = 0; col < frame.cols; ++col) {
@@ -74,8 +77,14 @@ void VideoCodec::encode(const std::vector<cv::Mat> &frames,
           int predictedValue = predictPixel(frame, row, col, channel);
           int residual = actualValue - predictedValue;
 
-          // Apply quantization
           int quantizedResidual = quantize(residual, quantizationLevel);
+
+          // Propagate the quantized residual to the actual value
+          int quantizedActualValue =
+              predictedValue + dequantize(quantizedResidual, quantizationLevel);
+          frame.at<cv::Vec3b>(row, col)[channel] =
+              static_cast<uchar>(std::clamp(quantizedActualValue, 0, 255));
+
           golomb.encodeInteger(quantizedResidual, bitStream);
         }
       }
