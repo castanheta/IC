@@ -35,7 +35,6 @@ static int dequantize(int value, int quantLevel) {
 }
 
 void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
-  // Create a mutable copy of the input image
   cv::Mat modifiedImage = image.clone();
   BitStream bitStream(outputFile, true);
 
@@ -53,7 +52,6 @@ void ImageCodec::encode(const cv::Mat &image, const std::string &outputFile) {
         // propagate the quantized residual to the actual value
         int quantizedActualValue =
             predictedValue + dequantize(quantizedResidual, quantLevel);
-        // Save value in the copy
         modifiedImage.at<cv::Vec3b>(row, col)[channel] =
             static_cast<uchar>(std::clamp(quantizedActualValue, 0, 255));
         golomb.encodeInteger(quantizedResidual, bitStream);
@@ -76,7 +74,8 @@ cv::Mat ImageCodec::decode(const std::string &inputFile) {
         int predictedValue = predictPixel(decodedImage, row, col, channel);
 
         int quantizedResidual = golomb.decodeInteger(bitStream);
-        int residual = quantizedResidual;
+        int residual = dequantize(quantizedResidual,
+                                  quantLevel); // Dequantize the residual
 
         int actualValue = predictedValue + residual;
 
